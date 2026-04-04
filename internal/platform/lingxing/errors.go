@@ -19,9 +19,12 @@ var GlobalErrorCodeDesc = map[int]string{
 }
 
 const (
+	// ErrCodeTokenMissingOrExpired token 不存在或过期，通常可清理缓存 token 后重试一次。
 	ErrCodeTokenMissingOrExpired = 2001003
-	ErrCodeAccessTokenNotMatch   = 2001005
-	ErrCodeRateLimited           = 3001008
+	// ErrCodeAccessTokenNotMatch token 与 app 关系不匹配，同样按 token 失效路径处理。
+	ErrCodeAccessTokenNotMatch = 2001005
+	// ErrCodeRateLimited 命中接口限流（文档：维度 appId + 接口url）。
+	ErrCodeRateLimited = 3001008
 )
 
 type APIError struct {
@@ -31,6 +34,7 @@ type APIError struct {
 	Endpoint  string
 }
 
+// Error 会附带错误码中文释义，方便日志排障。
 func (e *APIError) Error() string {
 	if e == nil {
 		return ""

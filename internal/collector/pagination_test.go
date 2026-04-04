@@ -2,6 +2,7 @@ package collector
 
 import "testing"
 
+// TestExtractTotalAndRecords 验证大小写与层级差异下的提取兼容性。
 func TestExtractTotalAndRecords(t *testing.T) {
 	payload := map[string]any{
 		"Data": map[string]any{
@@ -21,6 +22,7 @@ func TestExtractTotalAndRecords(t *testing.T) {
 	}
 }
 
+// TestNeedNextPage 验证“已知 total/未知 total”两种翻页判定策略。
 func TestNeedNextPage(t *testing.T) {
 	if !NeedNextPage(1, 50, 50, 0, false) {
 		t.Fatalf("expected next page when total unknown and recordCount == pageSize")

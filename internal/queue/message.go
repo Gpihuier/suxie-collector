@@ -2,6 +2,8 @@ package queue
 
 import "time"
 
+// CollectMessage 是采集结果的 MQ 载荷模型。
+// 设计为“原始数据 + 请求上下文”组合，便于下游幂等与排错。
 type CollectMessage struct {
 	TenantID      string         `json:"tenant_id"`
 	Platform      string         `json:"platform"`

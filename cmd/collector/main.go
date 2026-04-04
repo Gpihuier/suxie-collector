@@ -12,6 +12,7 @@ import (
 	"suxie.com/suxie-collector/internal/app"
 )
 
+// main 负责参数解析与进程级生命周期控制。
 func main() {
 	var (
 		configPath string
@@ -29,6 +30,9 @@ func main() {
 	fmt.Println("suxie collector start")
 }
 
+// runWithGracefulReload 支持两类信号：
+// 1) SIGINT/SIGTERM: 优雅停机
+// 2) SIGHUP: 优雅重载（停止当前实例并重建）
 func runWithGracefulReload(configPath, tasksPath string) error {
 	rootCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

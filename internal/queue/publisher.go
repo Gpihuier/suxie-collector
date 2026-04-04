@@ -13,10 +13,12 @@ type MQPublisher struct {
 	routingKey string
 }
 
+// NewMQPublisher 创建消息发布器封装。
 func NewMQPublisher(producer *Producer, routingKey string) *MQPublisher {
 	return &MQPublisher{producer: producer, routingKey: routingKey}
 }
 
+// Publish 将采集消息序列化并附加基础 headers 后发送到 RabbitMQ。
 func (p *MQPublisher) Publish(ctx context.Context, msg CollectMessage) error {
 	if p.producer == nil {
 		return fmt.Errorf("nil producer")

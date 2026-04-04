@@ -23,6 +23,7 @@ type Client struct {
 	logger     *slog.Logger
 }
 
+// NewClient 创建钉钉通知客户端；enable=false 时发送会短路为 no-op。
 func NewClient(enabled bool, webhookURL, secret string, logger *slog.Logger) *Client {
 	return &Client{
 		enabled:    enabled,
@@ -33,6 +34,8 @@ func NewClient(enabled bool, webhookURL, secret string, logger *slog.Logger) *Cl
 	}
 }
 
+// SendMarkdown 发送 markdown 消息。
+// 当配置了 secret 时自动生成 timestamp + sign。
 func (c *Client) SendMarkdown(ctx context.Context, title, text string) error {
 	if !c.enabled || c.webhookURL == "" {
 		return nil
@@ -84,6 +87,7 @@ func (c *Client) SendMarkdown(ctx context.Context, title, text string) error {
 	return nil
 }
 
+// signDingTalk 实现钉钉签名：HMAC-SHA256 + Base64 + URL Encode。
 func signDingTalk(timestamp, secret string) string {
 	stringToSign := timestamp + "\n" + secret
 	h := hmac.New(sha256.New, []byte(secret))

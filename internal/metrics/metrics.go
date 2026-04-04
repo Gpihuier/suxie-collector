@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// CollectorMetrics 聚合采集服务关键指标，便于统一注入和调用。
 type CollectorMetrics struct {
 	CollectRequests *prometheus.CounterVec
 	CollectRecords  *prometheus.CounterVec
@@ -18,6 +19,7 @@ type CollectorMetrics struct {
 	RateLimited     *prometheus.CounterVec
 }
 
+// NewCollectorMetrics 初始化业务指标。
 func NewCollectorMetrics(reg prometheus.Registerer) *CollectorMetrics {
 	factory := promauto.With(reg)
 
@@ -62,6 +64,7 @@ func NewCollectorMetrics(reg prometheus.Registerer) *CollectorMetrics {
 	}
 }
 
+// NewRegistry 创建 Prometheus Registry 并注册 Go/Process 基础指标。
 func NewRegistry() (*prometheus.Registry, *CollectorMetrics) {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(prometheus.NewGoCollector())
@@ -69,10 +72,12 @@ func NewRegistry() (*prometheus.Registry, *CollectorMetrics) {
 	return reg, NewCollectorMetrics(reg)
 }
 
+// NewHTTPHandler 返回 /metrics HTTP handler。
 func NewHTTPHandler(reg *prometheus.Registry) http.Handler {
 	return promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
 }
 
+// ObserveDuration 是简化的耗时观测辅助函数。
 func ObserveDuration(start time.Time, fn func(seconds float64)) {
 	fn(time.Since(start).Seconds())
 }

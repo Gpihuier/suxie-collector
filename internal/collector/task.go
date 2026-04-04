@@ -31,6 +31,7 @@ type Pagination struct {
 	TotalPathCandidates []string
 }
 
+// NewBaseCollectTask 提供一组安全默认值，减少业务侧样板代码。
 func NewBaseCollectTask() *BaseCollectTask {
 	return &BaseCollectTask{
 		Method:        "GET",
@@ -150,6 +151,7 @@ func (t *BaseCollectTask) WithWindow(start, end time.Time) *BaseCollectTask {
 	return t
 }
 
+// Clone 返回任务副本，避免并发执行时共享 map/slice 引发数据竞争。
 func (t *BaseCollectTask) Clone() *BaseCollectTask {
 	cp := *t
 	cp.Headers = mapCloneString(t.Headers)

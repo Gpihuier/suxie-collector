@@ -8,6 +8,7 @@ import (
 	"suxie.com/suxie-collector/internal/storage"
 )
 
+// TestRenderParamSets 验证列表变量展开为多组参数。
 func TestRenderParamSets(t *testing.T) {
 	vars := ResolveOutput{
 		Scalars: map[string]string{"start": "2026-01-01", "end": "2026-01-02"},
@@ -27,6 +28,7 @@ func TestRenderParamSets(t *testing.T) {
 	}
 }
 
+// TestDateWindowProvider 验证 date_window 可基于游标续跑。
 func TestDateWindowProvider(t *testing.T) {
 	provider := DateWindowProvider{
 		KeyStart:  "window_start",

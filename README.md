@@ -48,12 +48,14 @@ internal/runner                      # 任务编排、调度和并发执行
 1. 安装依赖服务：Redis、RabbitMQ。
 2. 复制并修改配置：
    - `configs/app.example.yaml`
-   - `configs/tasks.example.yaml`
+   - `configs/tasks/*.yaml`（一个租户一个任务文件）
 3. 启动服务：
 
 ```bash
-go run ./cmd/collector -config configs/app.example.yaml -tasks configs/tasks.example.yaml
+go run ./cmd/collector -config configs/app.example.yaml -tasks configs/tasks
 ```
+
+也可以让 `app.tasks_file` 指向目录（例如 `configs/tasks`），程序会自动加载目录下所有 `*.yaml/*.yml` 文件并合并。
 
 4. 查看指标（若开启）：
 

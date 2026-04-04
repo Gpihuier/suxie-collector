@@ -33,6 +33,7 @@ type ExecuteInput struct {
 	Limiter   *rate.Limiter
 }
 
+// Engine 负责编排“变量展开 -> 分页采集 -> 游标持久化 -> MQ投递”完整链路。
 type Engine struct {
 	logger    *slog.Logger
 	metrics   *metrics.CollectorMetrics
@@ -99,6 +100,7 @@ func (e *Engine) Execute(ctx context.Context, in ExecuteInput) error {
 		workerCount = 1
 	}
 
+	// jobs 用于分发不同参数组合（例如不同店铺/站点）的采集任务。
 	jobs := make(chan map[string]any)
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -120,6 +122,7 @@ func (e *Engine) Execute(ctx context.Context, in ExecuteInput) error {
 		})
 	}
 
+	// 生产者协程：把参数集推入 jobs，由 worker 并发消费。
 	g.Go(func() error {
 		defer close(jobs)
 		for _, params := range paramSets {
@@ -174,6 +177,7 @@ func (e *Engine) collectByParams(
 		default:
 		}
 
+		// 每页请求动态注入分页参数，兼容 page/limit 等不同字段名。
 		requestParams := BuildPageParams(params, in.Task.Pagination, page)
 		if in.Limiter != nil {
 			e.metrics.RateLimited.WithLabelValues(in.Task.TenantID, in.Task.JobName).Inc()
@@ -198,6 +202,7 @@ func (e *Engine) collectByParams(
 		}
 		e.metrics.CollectRequests.WithLabelValues(in.Task.TenantID, in.Task.JobName, "success").Inc()
 
+		// 兼容 Data/data/外层的 total 与 records 返回结构差异。
 		records, _ := ExtractRecords(resp, in.Task.DataPaths)
 		total, totalKnown := ExtractTotal(resp, in.Task.Pagination.TotalPathCandidates)
 
@@ -233,6 +238,7 @@ func (e *Engine) collectByParams(
 		if !in.Task.Pagination.Enabled {
 			break
 		}
+		// total 已知按 total 判断；未知时按“是否满页”继续翻页。
 		if !NeedNextPage(page, in.Task.Pagination.PageSize, len(records), total, totalKnown) {
 			break
 		}
@@ -267,6 +273,7 @@ func buildPageCursorKey(base string, params map[string]any, p Pagination) string
 		if k == p.PageParam || k == p.PageSizeParam {
 			continue
 		}
+		// 时间窗口参数不参与游标哈希，避免每个时间片都产生新游标键。
 		if strings.Contains(kLower, "date") || strings.Contains(kLower, "time") || strings.Contains(kLower, "start") || strings.Contains(kLower, "end") {
 			continue
 		}

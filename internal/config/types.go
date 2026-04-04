@@ -27,6 +27,7 @@ type AppSection struct {
 	TasksFile string `yaml:"tasks_file"`
 }
 
+// LoggingConfig 定义日志级别与文件滚动策略。
 type LoggingConfig struct {
 	Level      string `yaml:"level"`
 	FilePath   string `yaml:"file_path"`
@@ -36,12 +37,14 @@ type LoggingConfig struct {
 	Compress   bool   `yaml:"compress"`
 }
 
+// RedisConfig 用于游标状态存储连接配置。
 type RedisConfig struct {
 	Addr     string `yaml:"addr"`
 	Password string `yaml:"password"`
 	DB       int    `yaml:"db"`
 }
 
+// RabbitMQConfig 用于采集结果投递配置。
 type RabbitMQConfig struct {
 	URL          string `yaml:"url"`
 	Exchange     string `yaml:"exchange"`
@@ -50,6 +53,7 @@ type RabbitMQConfig struct {
 	Mandatory    bool   `yaml:"mandatory"`
 }
 
+// MetricsConfig 用于 Prometheus 暴露配置。
 type MetricsConfig struct {
 	Enable bool   `yaml:"enable"`
 	Addr   string `yaml:"addr"`
@@ -66,6 +70,7 @@ type DingTalkConfig struct {
 	Secret  string `yaml:"secret"`
 }
 
+// LingxingConfig 为领星平台接入配置。
 type LingxingConfig struct {
 	BaseURL             string                            `yaml:"base_url"`
 	TokenPath           string                            `yaml:"token_path"`
@@ -77,19 +82,15 @@ type LingxingConfig struct {
 }
 
 type LingxingTenantAuthConf struct {
-	ID          string `yaml:"id"`
-	Name        string `yaml:"name"`
-	AppID       string `yaml:"app_id"`
-	AppKey      string `yaml:"app_key"`
-	AppSecret   string `yaml:"app_secret"`
-	StaticToken string `yaml:"static_token"`
+	ID        string `yaml:"id"`
+	Name      string `yaml:"name"`
+	AppID     string `yaml:"app_id"`
+	AppSecret string `yaml:"app_secret"`
 }
 
+// EffectiveAppID 优先使用 app_id，兼容历史字段 app_key。
 func (c LingxingTenantAuthConf) EffectiveAppID() string {
-	if c.AppID != "" {
-		return c.AppID
-	}
-	return c.AppKey
+	return c.AppID
 }
 
 type RunnerConfig struct {
@@ -98,6 +99,7 @@ type RunnerConfig struct {
 	ShutdownGracePeriod string `yaml:"shutdown_grace_period"`
 }
 
+// TimeoutDuration 解析领星客户端超时时间，异常时给默认值。
 func (c AppConfig) TimeoutDuration() time.Duration {
 	d, err := time.ParseDuration(c.Lingxing.Timeout)
 	if err != nil || d <= 0 {
@@ -106,6 +108,7 @@ func (c AppConfig) TimeoutDuration() time.Duration {
 	return d
 }
 
+// ShutdownGraceDuration 解析优雅停机缓冲时间，异常时给默认值。
 func (c AppConfig) ShutdownGraceDuration() time.Duration {
 	d, err := time.ParseDuration(c.Runner.ShutdownGracePeriod)
 	if err != nil || d <= 0 {
@@ -114,6 +117,7 @@ func (c AppConfig) ShutdownGraceDuration() time.Duration {
 	return d
 }
 
+// LingxingTokenReclaimDuration 解析本地令牌桶超时回收周期。
 func (c AppConfig) LingxingTokenReclaimDuration() time.Duration {
 	d, err := time.ParseDuration(c.Lingxing.TokenReclaimTimeout)
 	if err != nil || d <= 0 {
@@ -122,6 +126,7 @@ func (c AppConfig) LingxingTokenReclaimDuration() time.Duration {
 	return d
 }
 
+// LoadAppConfig 从 yaml 读取应用配置并补齐默认值。
 func LoadAppConfig(path string) (AppConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -137,6 +142,7 @@ func LoadAppConfig(path string) (AppConfig, error) {
 	return cfg, nil
 }
 
+// setDefaults 统一维护全局配置默认值，减少运行期 nil/空值判断。
 func (c *AppConfig) setDefaults() {
 	if c.App.Name == "" {
 		c.App.Name = "suxie-collector"

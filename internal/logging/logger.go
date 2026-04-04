@@ -11,6 +11,7 @@ import (
 	"suxie.com/suxie-collector/internal/config"
 )
 
+// NewLogger 初始化 JSON slog，并支持 stdout + 文件滚动双写。
 func NewLogger(cfg config.LoggingConfig) *slog.Logger {
 	level := parseLevel(cfg.Level)
 
@@ -32,6 +33,7 @@ func NewLogger(cfg config.LoggingConfig) *slog.Logger {
 	return slog.New(handler)
 }
 
+// parseLevel 将字符串日志级别转换为 slog.Level。
 func parseLevel(v string) slog.Level {
 	switch strings.ToLower(strings.TrimSpace(v)) {
 	case "debug":

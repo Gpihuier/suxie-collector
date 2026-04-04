@@ -14,6 +14,10 @@ type endpointProfile struct {
 	ApplyAndValidate    func(params map[string]any) error
 }
 
+// endpointProfiles 存放“接口级协议约束”：
+// - 默认参数
+// - 参数合法性校验
+// - 独立令牌桶容量
 var endpointProfiles = map[string]endpointProfile{
 	"/bd/profit/report/open/report/msku/list": {
 		Method:              "POST",
@@ -31,6 +35,7 @@ func lookupEndpointProfile(target string) (endpointProfile, bool) {
 	return p, ok
 }
 
+// applyMSKUProfitParams 对“利润报表-MSKU”应用默认值并做参数校验。
 func applyMSKUProfitParams(params map[string]any) error {
 	if params == nil {
 		return fmt.Errorf("msku list params is nil")
@@ -74,6 +79,7 @@ func applyMSKUProfitParams(params map[string]any) error {
 	}
 
 	if monthly {
+		// 按月查询：开始结束必须同月，格式 Y-m
 		start, err := time.Parse("2006-01", startDate)
 		if err != nil {
 			return fmt.Errorf("monthlyQuery=true startDate format must be Y-m")
@@ -88,6 +94,7 @@ func applyMSKUProfitParams(params map[string]any) error {
 		return nil
 	}
 
+	// 按天查询：双闭区间且跨度不超过 31 天，格式 Y-m-d
 	start, err := time.Parse("2006-01-02", startDate)
 	if err != nil {
 		return fmt.Errorf("monthlyQuery=false startDate format must be Y-m-d")
@@ -106,6 +113,7 @@ func applyMSKUProfitParams(params map[string]any) error {
 	return nil
 }
 
+// asInt 以宽松类型转换方式读取整数字段。
 func asInt(v any) (int, error) {
 	switch x := v.(type) {
 	case int:
@@ -125,6 +133,7 @@ func asInt(v any) (int, error) {
 	}
 }
 
+// asBool 以宽松类型转换方式读取布尔字段。
 func asBool(v any) (bool, error) {
 	switch x := v.(type) {
 	case bool:
@@ -140,6 +149,7 @@ func asBool(v any) (bool, error) {
 	}
 }
 
+// asString 读取字符串字段。
 func asString(v any) (string, bool) {
 	s, ok := v.(string)
 	if ok {

@@ -2,6 +2,7 @@ package lingxing
 
 import "testing"
 
+// TestApplyMSKUProfitParams_Daily 验证按天查询默认值和参数合法性。
 func TestApplyMSKUProfitParams_Daily(t *testing.T) {
 	params := map[string]any{
 		"startDate": "2026-04-01",
@@ -18,6 +19,7 @@ func TestApplyMSKUProfitParams_Daily(t *testing.T) {
 	}
 }
 
+// TestApplyMSKUProfitParams_Monthly 验证按月查询同月约束。
 func TestApplyMSKUProfitParams_Monthly(t *testing.T) {
 	params := map[string]any{
 		"monthlyQuery": true,
@@ -29,6 +31,7 @@ func TestApplyMSKUProfitParams_Monthly(t *testing.T) {
 	}
 }
 
+// TestApplyMSKUProfitParams_InvalidRange 验证按天查询跨度上限校验。
 func TestApplyMSKUProfitParams_InvalidRange(t *testing.T) {
 	params := map[string]any{
 		"monthlyQuery": false,

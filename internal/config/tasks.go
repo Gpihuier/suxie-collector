@@ -27,6 +27,7 @@ type TenantConfig struct {
 	Jobs      []JobConfig      `yaml:"jobs"`
 }
 
+// RateLimitConfig 表示令牌桶参数（RPS + Burst）。
 type RateLimitConfig struct {
 	RPS   float64 `yaml:"rps"`
 	Burst int     `yaml:"burst"`
@@ -74,6 +75,9 @@ type VariableConfig struct {
 	StartFrom string   `yaml:"start_from"`
 }
 
+// LoadTasksConfig 支持两种输入：
+// 1) 单文件：传统 tasks.yaml
+// 2) 目录：一租户一文件，自动合并
 func LoadTasksConfig(path string) (TasksConfig, error) {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -86,6 +90,7 @@ func LoadTasksConfig(path string) (TasksConfig, error) {
 	return loadTasksConfigFromFile(path)
 }
 
+// loadTasksConfigFromFile 读取单个任务文件。
 func loadTasksConfigFromFile(path string) (TasksConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -101,6 +106,8 @@ func loadTasksConfigFromFile(path string) (TasksConfig, error) {
 	return cfg, nil
 }
 
+// loadTasksConfigFromDir 扫描任务目录并合并所有 yaml/yml。
+// 文件名会作为 tenant 的默认 id（未显式提供时）。
 func loadTasksConfigFromDir(dir string) (TasksConfig, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -129,6 +136,7 @@ func loadTasksConfigFromDir(dir string) (TasksConfig, error) {
 			return TasksConfig{}, err
 		}
 
+		// 文件名即租户默认 id，满足“一租户一文件”约定。
 		fileID := strings.TrimSuffix(name, filepath.Ext(name))
 		for i := range cfg.Tenants {
 			t := &cfg.Tenants[i]
@@ -153,6 +161,7 @@ func loadTasksConfigFromDir(dir string) (TasksConfig, error) {
 	return merged, nil
 }
 
+// setDefaults 统一补齐任务默认值，避免运行期出现空字段判断分散在各模块。
 func (c *TasksConfig) setDefaults() {
 	if c.Version == "" {
 		c.Version = "1"

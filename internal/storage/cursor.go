@@ -12,6 +12,10 @@ import (
 
 var ErrCursorNotFound = errors.New("cursor not found")
 
+// CursorState 描述采集任务的断点状态：
+// - NextPage: 下次从哪一页继续
+// - LastWindowEnd: 上次采集窗口结束时间（增量采集关键）
+// - LastSuccessAt: 最近一次成功采集时间
 type CursorState struct {
 	NextPage       int       `json:"next_page"`
 	LastWindowEnd  string    `json:"last_window_end"`
@@ -25,6 +29,7 @@ type CursorStore interface {
 	Delete(ctx context.Context, key string) error
 }
 
+// RedisCursorStore 是 CursorStore 的 Redis 实现。
 type RedisCursorStore struct {
 	client *redis.Client
 }
@@ -33,6 +38,7 @@ func NewRedisCursorStore(client *redis.Client) *RedisCursorStore {
 	return &RedisCursorStore{client: client}
 }
 
+// Get 读取游标，不存在时返回 ErrCursorNotFound。
 func (s *RedisCursorStore) Get(ctx context.Context, key string) (CursorState, error) {
 	val, err := s.client.Get(ctx, key).Result()
 	if errors.Is(err, redis.Nil) {
@@ -49,6 +55,7 @@ func (s *RedisCursorStore) Get(ctx context.Context, key string) (CursorState, er
 	return state, nil
 }
 
+// Set 持久化游标状态。
 func (s *RedisCursorStore) Set(ctx context.Context, key string, state CursorState) error {
 	body, err := json.Marshal(state)
 	if err != nil {
@@ -60,6 +67,7 @@ func (s *RedisCursorStore) Set(ctx context.Context, key string, state CursorStat
 	return nil
 }
 
+// Delete 删除游标。
 func (s *RedisCursorStore) Delete(ctx context.Context, key string) error {
 	if err := s.client.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("redis del cursor key=%s: %w", key, err)

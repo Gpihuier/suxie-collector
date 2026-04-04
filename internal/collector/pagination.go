@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// ExtractTotal 按候选路径顺序提取 total，兼容接口返回层级差异。
 func ExtractTotal(payload map[string]any, candidates []string) (int, bool) {
 	for _, path := range candidates {
 		v, ok := LookupPath(payload, path)
@@ -20,6 +21,7 @@ func ExtractTotal(payload map[string]any, candidates []string) (int, bool) {
 	return 0, false
 }
 
+// ExtractRecords 按候选路径提取列表数据。
 func ExtractRecords(payload map[string]any, candidates []string) ([]any, bool) {
 	for _, path := range candidates {
 		v, ok := LookupPath(payload, path)
@@ -40,6 +42,7 @@ func ExtractRecords(payload map[string]any, candidates []string) ([]any, bool) {
 	return nil, false
 }
 
+// LookupPath 支持 a.b.c 形式路径，并对 key 大小写不敏感。
 func LookupPath(payload map[string]any, path string) (any, bool) {
 	if path == "" {
 		return payload, true
@@ -97,6 +100,7 @@ func toInt(v any) (int, bool) {
 	}
 }
 
+// BuildPageParams 把分页字段写入请求参数。
 func BuildPageParams(base map[string]any, pagination Pagination, page int) map[string]any {
 	params := make(map[string]any, len(base)+2)
 	for k, v := range base {
@@ -109,6 +113,8 @@ func BuildPageParams(base map[string]any, pagination Pagination, page int) map[s
 	return params
 }
 
+// NeedNextPage 判断是否需要继续翻页。
+// total 已知时优先依赖 total；未知时采用“满页继续”策略。
 func NeedNextPage(page, pageSize, recordCount, total int, totalKnown bool) bool {
 	if recordCount == 0 {
 		return false
@@ -119,6 +125,7 @@ func NeedNextPage(page, pageSize, recordCount, total int, totalKnown bool) bool 
 	return recordCount >= pageSize
 }
 
+// EnsurePagination 归一化分页配置并做基础校验。
 func EnsurePagination(p Pagination) (Pagination, error) {
 	if !p.Enabled {
 		return p, nil
@@ -135,8 +142,9 @@ func EnsurePagination(p Pagination) (Pagination, error) {
 	if p.PageSize <= 0 {
 		return p, fmt.Errorf("invalid page_size: %d", p.PageSize)
 	}
+	// TODO
 	if len(p.TotalPathCandidates) == 0 {
-		p.TotalPathCandidates = []string{"data.total", "Data.Total", "total", "Total"}
+		p.TotalPathCandidates = []string{"data.total", "total", "Total"}
 	}
 	return p, nil
 }

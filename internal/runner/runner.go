@@ -28,6 +28,7 @@ type compiledJob struct {
 	Every     time.Duration
 }
 
+// Runner 负责“任务编排 + 定时分发 + worker 并发执行”。
 type Runner struct {
 	logger      *slog.Logger
 	workerCount int
@@ -57,6 +58,9 @@ func New(logger *slog.Logger, workerCount, queueSize int, engine *collector.Engi
 	}
 }
 
+// Start 启动两类协程：
+// 1) dispatcher：按周期把任务投递到执行队列
+// 2) worker：消费执行队列并调用采集引擎
 func (r *Runner) Start(ctx context.Context) error {
 	jobs, err := r.compileJobs()
 	if err != nil {
@@ -67,6 +71,7 @@ func (r *Runner) Start(ctx context.Context) error {
 		return nil
 	}
 
+	// execQueue 作为调度层与执行层之间的解耦缓冲。
 	execQueue := make(chan compiledJob, r.queueSize)
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -80,6 +85,7 @@ func (r *Runner) Start(ctx context.Context) error {
 					if !ok {
 						return nil
 					}
+					// 每次执行都 clone 任务，避免并发写共享对象。
 					if err := r.engine.Execute(gctx, collector.ExecuteInput{
 						Task:      job.Task.Clone(),
 						Timezone:  job.Timezone,
@@ -108,6 +114,7 @@ func (r *Runner) Start(ctx context.Context) error {
 	for _, compiled := range jobs {
 		compiled := compiled
 		g.Go(func() error {
+			// 每个编译后的任务有自己独立的 ticker。
 			ticker := time.NewTicker(compiled.Every)
 			defer ticker.Stop()
 
@@ -138,6 +145,7 @@ func (r *Runner) Start(ctx context.Context) error {
 }
 
 func (r *Runner) compileJobs() ([]compiledJob, error) {
+	// compileJobs 把“配置”转换为“可执行任务对象”，集中做校验与默认值处理。
 	compiled := make([]compiledJob, 0)
 
 	for _, tenant := range r.tasks.Tenants {
@@ -168,6 +176,7 @@ func (r *Runner) compileJobs() ([]compiledJob, error) {
 			if job.RateLimit != nil {
 				limiterCfg = *job.RateLimit
 			}
+			// 限流优先级：job.rate_limit > tenant.rate_limit。
 			limiter := rate.NewLimiter(rate.Limit(limiterCfg.RPS), limiterCfg.Burst)
 
 			task := collector.NewBaseCollectTask().

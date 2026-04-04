@@ -22,6 +22,9 @@ type ResolveInput struct {
 	Cursor   storage.CursorState
 }
 
+// ResolveOutput 分为两类：
+// 1) Scalars: 单值变量
+// 2) Lists: 列表变量（会参与参数组合展开）
 type ResolveOutput struct {
 	Scalars            map[string]string
 	Lists              map[string][]string
@@ -35,6 +38,7 @@ type VariableProvider interface {
 	Resolve(ctx context.Context, input ResolveInput) (ResolveOutput, error)
 }
 
+// StaticProvider 提供固定值变量。
 type StaticProvider struct {
 	Key   string
 	Value string
@@ -58,6 +62,8 @@ func (p ListProvider) Resolve(_ context.Context, _ ResolveInput) (ResolveOutput,
 	return ResolveOutput{Lists: map[string][]string{p.Key: values}}, nil
 }
 
+// DateWindowProvider 提供时间窗口变量（start/end）。
+// 常用于按天/按月增量采集。
 type DateWindowProvider struct {
 	KeyStart  string
 	KeyEnd    string
@@ -77,6 +83,7 @@ func (p DateWindowProvider) Resolve(_ context.Context, input ResolveInput) (Reso
 	now := input.Now.In(loc)
 	start := p.StartFrom.In(loc)
 
+	// 若存在游标则从上次窗口结束时间续跑。
 	if input.Cursor.LastWindowEnd != "" {
 		last, parseErr := time.Parse(time.RFC3339, input.Cursor.LastWindowEnd)
 		if parseErr == nil {
@@ -88,6 +95,7 @@ func (p DateWindowProvider) Resolve(_ context.Context, input ResolveInput) (Reso
 		start = now.Add(-24 * time.Hour)
 	}
 
+	// end 不能超过当前时间，保证窗口不会跑到未来。
 	end := start.Add(p.Window)
 	if end.After(now) {
 		end = now
@@ -110,6 +118,7 @@ func (p DateWindowProvider) Resolve(_ context.Context, input ResolveInput) (Reso
 }
 
 func BuildProviders(configs []config.VariableConfig) ([]VariableProvider, error) {
+	// BuildProviders 把配置映射为具体 provider，实现可插拔变量来源。
 	providers := make([]VariableProvider, 0, len(configs))
 	for _, c := range configs {
 		typ := strings.ToLower(strings.TrimSpace(c.Type))
@@ -165,6 +174,7 @@ func (p DateWindowProvider) layout() string {
 }
 
 func ResolveVariables(ctx context.Context, input ResolveInput, providers []VariableProvider) (ResolveOutput, error) {
+	// 按 provider 顺序合并，后写入的同名 key 会覆盖前者。
 	merged := ResolveOutput{
 		Scalars: map[string]string{},
 		Lists:   map[string][]string{},
@@ -204,6 +214,7 @@ func RenderParamSets(template map[string]any, variables ResolveOutput) []map[str
 	}
 
 	sort.Strings(usedListVars)
+	// 列表变量做笛卡尔积，生成多组请求参数。
 	combinations := crossProduct(variables.Lists, usedListVars)
 	result := make([]map[string]any, 0, len(combinations))
 	for _, combo := range combinations {

@@ -18,6 +18,7 @@ type Producer struct {
 	mandatory  bool
 }
 
+// NewProducer 初始化连接、信道与 exchange。
 func NewProducer(cfg config.RabbitMQConfig) (*Producer, error) {
 	conn, err := amqp.Dial(cfg.URL)
 	if err != nil {
@@ -52,6 +53,8 @@ func NewProducer(cfg config.RabbitMQConfig) (*Producer, error) {
 	}, nil
 }
 
+// Publish 发布消息到 exchange/routingKey。
+// 每次 publish 带 5s context 超时，避免长时间阻塞调用方。
 func (p *Producer) Publish(ctx context.Context, body []byte, routingKey string, headers amqp.Table) error {
 	if routingKey == "" {
 		routingKey = p.routingKey
@@ -74,6 +77,7 @@ func (p *Producer) Publish(ctx context.Context, body []byte, routingKey string, 
 	return nil
 }
 
+// Close 关闭 channel 与 connection。
 func (p *Producer) Close() error {
 	if p == nil {
 		return nil

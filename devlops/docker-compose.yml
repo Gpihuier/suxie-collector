@@ -1,0 +1,18 @@
+services:
+  collector:
+    container_name: suxie-collector
+    build:
+      context: ..
+      dockerfile: devlops/Dockerfile
+    image: suxie-collector:latest
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    command: ["-config", "/app/configs/app.example.yaml", "-tasks", "/app/configs/tasks"]
+    ports:
+      - "2112:2112" # Prometheus metrics
+    volumes:
+      # 挂载配置，便于本地改动后直接生效
+      - ../configs:/app/configs:ro
+      # 采集日志落盘
+      - ../logs:/app/logs

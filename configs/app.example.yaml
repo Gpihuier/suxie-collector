@@ -63,13 +63,13 @@ lingxing:
     X-Source: suxie-collector
   # 多租户认证配置
   tenants:
-    xunwo:
-      id: xunwo
+    100001:
+      id: 100001
       name: 逊沃
-      app_id: your-app-id
-      app_secret: your-app-secret
-    zhuoya:
-      id: zhuoya
+      app_id: ak_KYmwBM7Lkod45
+      app_secret: mu8MeXTrlwM1KhIopxKx8w==
+    100002:
+      id: 100002
       name: 卓亚
       app_id: your-app-id-b
       app_secret: your-app-secret-b

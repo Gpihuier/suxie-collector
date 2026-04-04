@@ -10,6 +10,7 @@ import (
 	"suxie.com/suxie-collector/internal/config"
 )
 
+// NewRedisClient 初始化 Redis 客户端并执行 ping 健康检查。
 func NewRedisClient(cfg config.RedisConfig) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:         cfg.Addr,

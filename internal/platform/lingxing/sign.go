@@ -11,11 +11,13 @@ import (
 	"strings"
 )
 
+// GenerateSign 实现领星签名算法。
 func GenerateSign(appID string, params map[string]any) (string, error) {
 	if appID == "" {
 		return "", fmt.Errorf("appID is empty")
 	}
 
+	// 1) 按 key 升序拼接 k=v（跳过 sign 本身）。
 	keys := make([]string, 0, len(params))
 	for k := range params {
 		if strings.EqualFold(k, "sign") {
@@ -34,9 +36,11 @@ func GenerateSign(appID string, params map[string]any) (string, error) {
 		pairs = append(pairs, fmt.Sprintf("%s=%s", key, value))
 	}
 
+	// 2) MD5 结果转大写。
 	raw := strings.Join(pairs, "&")
 	md5HexUpper := strings.ToUpper(fmt.Sprintf("%x", md5.Sum([]byte(raw))))
 
+	// 3) 使用 appID 作为 AES key 做 ECB 加密，最后 Base64。
 	encrypted, err := aesECBEncryptPKCS7([]byte(md5HexUpper), []byte(appID))
 	if err != nil {
 		return "", err
@@ -44,6 +48,7 @@ func GenerateSign(appID string, params map[string]any) (string, error) {
 	return base64.StdEncoding.EncodeToString(encrypted), nil
 }
 
+// normalizeSignValue 将待签名值统一转为字符串。
 func normalizeSignValue(v any) (string, error) {
 	switch x := v.(type) {
 	case string:
@@ -61,6 +66,7 @@ func normalizeSignValue(v any) (string, error) {
 	}
 }
 
+// aesECBEncryptPKCS7 执行 AES-ECB(PKCS7) 加密。
 func aesECBEncryptPKCS7(src, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -75,6 +81,7 @@ func aesECBEncryptPKCS7(src, key []byte) ([]byte, error) {
 	return out, nil
 }
 
+// pkcs7Padding 填充到块大小整数倍。
 func pkcs7Padding(src []byte, blockSize int) []byte {
 	padding := blockSize - len(src)%blockSize
 	pad := bytes.Repeat([]byte{byte(padding)}, padding)
