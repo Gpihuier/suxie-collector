@@ -19,5 +19,38 @@
 
 # Go workspace file
 go.work
+go.work.sum
 
 runtime
+
+# 环境变量文件 (通常包含敏感信息，如数据库密码)
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# JetBrains 系列
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Vim
+*.swp
+*.swo
+
+# 依赖目录 (Go Modules 模式下通常不提交 vendor)
+vendor/
