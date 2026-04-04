@@ -12,78 +12,115 @@ import (
 	"suxie.com/suxie-collector/internal/storage"
 )
 
+// placeholderRegex 用于匹配模板占位符，例如 ${window_start}。
 var placeholderRegex = regexp.MustCompile(`\$\{([a-zA-Z0-9_\-\.]+)\}`)
 
+// ResolveInput 是变量解析输入。
 type ResolveInput struct {
+	// TenantID 当前租户。
 	TenantID string
-	JobName  string
+	// JobName 当前任务名。
+	JobName string
+	// Timezone 变量计算时区。
 	Timezone string
-	Now      time.Time
-	Cursor   storage.CursorState
+	// Now 当前时间（可注入，便于测试）。
+	Now time.Time
+	// Cursor 上次运行游标（用于增量窗口续跑）。
+	Cursor storage.CursorState
 }
 
-// ResolveOutput 分为两类：
-// 1) Scalars: 单值变量
-// 2) Lists: 列表变量（会参与参数组合展开）
+// ResolveOutput 是变量解析输出。
+// 分两类：
+// 1) Scalars: 标量变量（单值）
+// 2) Lists: 列表变量（用于笛卡尔积参数展开）
 type ResolveOutput struct {
-	Scalars            map[string]string
-	Lists              map[string][]string
-	NextWindowEnd      *time.Time
+	// Scalars 保存 key->value 的字符串变量。
+	Scalars map[string]string
+	// Lists 保存 key->[]value 的列表变量。
+	Lists map[string][]string
+	// NextWindowEnd 表示本次窗口结束点，执行完成后会写回游标。
+	NextWindowEnd *time.Time
+	// CurrentWindowStart 记录当前窗口开始点（用于日志）。
 	CurrentWindowStart *time.Time
-	CurrentWindowEnd   *time.Time
+	// CurrentWindowEnd 记录当前窗口结束点（用于日志）。
+	CurrentWindowEnd *time.Time
 }
 
+// VariableProvider 是变量来源扩展点。
+// 新增变量来源（数据库、HTTP、文件）只需实现该接口。
 type VariableProvider interface {
+	// Type 返回 provider 类型标识。
 	Type() string
+	// Resolve 输出本 provider 提供的变量。
 	Resolve(ctx context.Context, input ResolveInput) (ResolveOutput, error)
 }
 
-// StaticProvider 提供固定值变量。
+// StaticProvider 返回固定标量变量。
 type StaticProvider struct {
-	Key   string
+	// Key 变量名。
+	Key string
+	// Value 变量值。
 	Value string
 }
 
+// Type 返回 provider 类型。
 func (p StaticProvider) Type() string { return "static" }
 
+// Resolve 输出固定变量。
 func (p StaticProvider) Resolve(_ context.Context, _ ResolveInput) (ResolveOutput, error) {
 	return ResolveOutput{Scalars: map[string]string{p.Key: p.Value}}, nil
 }
 
+// ListProvider 返回固定列表变量。
 type ListProvider struct {
-	Key    string
+	// Key 变量名。
+	Key string
+	// Values 列表值。
 	Values []string
 }
 
+// Type 返回 provider 类型。
 func (p ListProvider) Type() string { return "list" }
 
+// Resolve 输出列表变量。
 func (p ListProvider) Resolve(_ context.Context, _ ResolveInput) (ResolveOutput, error) {
+	// 做一次切片复制，避免外部修改原始配置数据。
 	values := append([]string{}, p.Values...)
 	return ResolveOutput{Lists: map[string][]string{p.Key: values}}, nil
 }
 
-// DateWindowProvider 提供时间窗口变量（start/end）。
-// 常用于按天/按月增量采集。
+// DateWindowProvider 负责生成时间窗口变量。
+// 常见用途：startDate/endDate 增量拉取。
 type DateWindowProvider struct {
-	KeyStart  string
-	KeyEnd    string
-	Format    string
-	Window    time.Duration
+	// KeyStart 开始时间变量名。
+	KeyStart string
+	// KeyEnd 结束时间变量名。
+	KeyEnd string
+	// Format 输出格式（Go layout）。
+	Format string
+	// Window 窗口跨度（例如 24h）。
+	Window time.Duration
+	// StartFrom 首次运行起点。
 	StartFrom time.Time
 }
 
+// Type 返回 provider 类型。
 func (p DateWindowProvider) Type() string { return "date_window" }
 
+// Resolve 计算当前窗口并输出 start/end 变量。
 func (p DateWindowProvider) Resolve(_ context.Context, input ResolveInput) (ResolveOutput, error) {
+	// 加载配置时区，失败时回退到本地时区。
 	loc, err := time.LoadLocation(input.Timezone)
 	if err != nil {
 		loc = time.Local
 	}
 
+	// now 统一转成业务时区。
 	now := input.Now.In(loc)
+	// 默认从 StartFrom 起跑。
 	start := p.StartFrom.In(loc)
 
-	// 若存在游标则从上次窗口结束时间续跑。
+	// 如果存在游标窗口结束时间，优先从游标续跑。
 	if input.Cursor.LastWindowEnd != "" {
 		last, parseErr := time.Parse(time.RFC3339, input.Cursor.LastWindowEnd)
 		if parseErr == nil {
@@ -91,19 +128,22 @@ func (p DateWindowProvider) Resolve(_ context.Context, input ResolveInput) (Reso
 		}
 	}
 
+	// StartFrom 和游标都为空时，默认取 now-24h。
 	if start.IsZero() {
 		start = now.Add(-24 * time.Hour)
 	}
 
-	// end 不能超过当前时间，保证窗口不会跑到未来。
+	// end = start + window，但不能超过 now。
 	end := start.Add(p.Window)
 	if end.After(now) {
 		end = now
 	}
+	// 极端情况下确保 end >= start。
 	if !end.After(start) {
 		end = start
 	}
 
+	// 输出变量采用配置格式（默认 RFC3339）。
 	scalars := map[string]string{
 		p.KeyStart: start.Format(p.layout()),
 		p.KeyEnd:   end.Format(p.layout()),
@@ -117,8 +157,8 @@ func (p DateWindowProvider) Resolve(_ context.Context, input ResolveInput) (Reso
 	}, nil
 }
 
+// BuildProviders 把配置层变量定义编译成 provider 实例。
 func BuildProviders(configs []config.VariableConfig) ([]VariableProvider, error) {
-	// BuildProviders 把配置映射为具体 provider，实现可插拔变量来源。
 	providers := make([]VariableProvider, 0, len(configs))
 	for _, c := range configs {
 		typ := strings.ToLower(strings.TrimSpace(c.Type))
@@ -166,6 +206,7 @@ func BuildProviders(configs []config.VariableConfig) ([]VariableProvider, error)
 	return providers, nil
 }
 
+// layout 返回日期格式；未配置时默认 RFC3339。
 func (p DateWindowProvider) layout() string {
 	if strings.TrimSpace(p.Format) == "" {
 		return time.RFC3339
@@ -173,8 +214,9 @@ func (p DateWindowProvider) layout() string {
 	return p.Format
 }
 
+// ResolveVariables 按 provider 顺序合并变量。
+// 后面的 provider 同名 key 会覆盖前面的值。
 func ResolveVariables(ctx context.Context, input ResolveInput, providers []VariableProvider) (ResolveOutput, error) {
-	// 按 provider 顺序合并，后写入的同名 key 会覆盖前者。
 	merged := ResolveOutput{
 		Scalars: map[string]string{},
 		Lists:   map[string][]string{},
@@ -203,18 +245,23 @@ func ResolveVariables(ctx context.Context, input ResolveInput, providers []Varia
 	return merged, nil
 }
 
+// RenderParamSets 把模板参数渲染成可执行参数集合。
 func RenderParamSets(template map[string]any, variables ResolveOutput) []map[string]any {
+	// 空模板仍然返回一个空参数集合，保证任务会执行一次。
 	if len(template) == 0 {
 		return []map[string]any{{}}
 	}
 
+	// 查找模板中真正使用到的列表变量。
 	usedListVars := findUsedListVariables(template, variables.Lists)
 	if len(usedListVars) == 0 {
+		// 无列表变量时只渲染一个参数集。
 		return []map[string]any{renderSingle(template, variables.Scalars, nil)}
 	}
 
+	// 固定顺序保证结果稳定。
 	sort.Strings(usedListVars)
-	// 列表变量做笛卡尔积，生成多组请求参数。
+	// 对列表变量做笛卡尔积。
 	combinations := crossProduct(variables.Lists, usedListVars)
 	result := make([]map[string]any, 0, len(combinations))
 	for _, combo := range combinations {
@@ -223,28 +270,34 @@ func RenderParamSets(template map[string]any, variables ResolveOutput) []map[str
 	return result
 }
 
+// renderSingle 渲染单组参数。
 func renderSingle(template map[string]any, scalars map[string]string, listValues map[string]string) map[string]any {
 	out := make(map[string]any, len(template))
 	for k, rawValue := range template {
 		tpl, ok := rawValue.(string)
 		if !ok {
+			// 非字符串值不做模板替换，直接透传。
 			out[k] = rawValue
 			continue
 		}
+		// 针对字符串做 ${var} 替换。
 		v := placeholderRegex.ReplaceAllStringFunc(tpl, func(raw string) string {
 			match := placeholderRegex.FindStringSubmatch(raw)
 			if len(match) != 2 {
 				return raw
 			}
 			key := match[1]
+			// 优先用列表变量组合值。
 			if listValues != nil {
 				if v, ok := listValues[key]; ok {
 					return v
 				}
 			}
+			// 其次用标量变量。
 			if v, ok := scalars[key]; ok {
 				return v
 			}
+			// 未匹配变量时替换为空字符串。
 			return ""
 		})
 		out[k] = v
@@ -252,6 +305,7 @@ func renderSingle(template map[string]any, scalars map[string]string, listValues
 	return out
 }
 
+// findUsedListVariables 找出模板里用到的列表变量名。
 func findUsedListVariables(template map[string]any, lists map[string][]string) []string {
 	set := map[string]struct{}{}
 	for _, raw := range template {
@@ -276,11 +330,13 @@ func findUsedListVariables(template map[string]any, lists map[string][]string) [
 	return out
 }
 
+// crossProduct 计算列表变量的笛卡尔积。
 func crossProduct(lists map[string][]string, keys []string) []map[string]string {
 	if len(keys) == 0 {
 		return []map[string]string{{}}
 	}
 
+	// result 从一个空组合开始逐步扩展。
 	result := []map[string]string{{}}
 	for _, key := range keys {
 		values := lists[key]
@@ -300,6 +356,7 @@ func crossProduct(lists map[string][]string, keys []string) []map[string]string 
 	return result
 }
 
+// mapClone 复制 map[string]string。
 func mapClone(in map[string]string) map[string]string {
 	out := make(map[string]string, len(in))
 	for k, v := range in {

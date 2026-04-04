@@ -12,7 +12,7 @@ logging:
   # debug/info/warn/error
   level: info
   # 建议使用绝对路径
-  file_path: /tmp/suxie-collector.log
+  file_path: ./runtime/logger/suxie-collector.log
   max_size_mb: 100
   max_backups: 10
   max_age_days: 7

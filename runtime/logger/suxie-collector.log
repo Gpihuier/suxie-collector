@@ -1,0 +1,1 @@
+{"time":"2026-04-04T21:26:24.872497+08:00","level":"INFO","source":{"function":"suxie.com/suxie-collector/internal/app.(*Application).Run.func1","file":"/Users/gpihuier/Workspace/coding/golang/src/suxie.com/suxie-collector/internal/app/app.go","line":73},"msg":"metrics server started","addr":":2112","path":"/metrics"}
