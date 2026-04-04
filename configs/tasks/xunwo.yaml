@@ -1,0 +1,46 @@
+version: "1"
+
+tenants:
+  - id: xunwo
+    tenant_id: xunwo
+    platform: lingxing
+    enabled: true
+    timezone: Asia/Shanghai
+
+    rate_limit:
+      rps: 2
+      burst: 4
+
+    variables:
+      - type: list
+        key: shop_id
+        values:
+          - shop_001
+
+    jobs:
+      - name: profit-report-msku
+        enabled: false
+        method: POST
+        endpoint: /bd/profit/report/open/report/msku/list
+        request_in: body
+        parallelism: 1
+        schedule:
+          mode: interval
+          every: 24h
+        pagination:
+          enabled: false
+        params:
+          offset: 0
+          length: 1000
+          mids: [2]
+          sids: [110]
+          monthlyQuery: false
+          startDate: "${window_start}"
+          endDate: "${window_end}"
+        variables:
+          - type: date_window
+            key_start: window_start
+            key_end: window_end
+            format: "2006-01-02"
+            window: 24h
+            start_from: "2026-01-01T00:00:00+08:00"

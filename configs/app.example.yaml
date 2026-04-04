@@ -1,0 +1,75 @@
+app:
+  # 应用唯一标识（用于部署环境区分）
+  id: suxie-collector-dev
+  # 服务名，仅用于日志和监控标签
+  name: suxie-collector
+  # 环境标识: dev/staging/prod
+  env: dev
+  # 任务配置目录（一个租户一个 yaml 文件，文件名建议与租户 id 一致）
+  tasks_file: configs/tasks
+
+logging:
+  # debug/info/warn/error
+  level: info
+  # 建议使用绝对路径
+  file_path: /tmp/suxie-collector.log
+  max_size_mb: 100
+  max_backups: 10
+  max_age_days: 7
+  compress: false
+
+redis:
+  addr: 127.0.0.1:6379
+  password: ""
+  db: 0
+
+rabbitmq:
+  # amqp://user:password@host:5672/vhost
+  url: amqp://guest:guest@127.0.0.1:5672/
+  exchange: collector.exchange
+  exchange_type: topic
+  routing_key: collector.lingxing.raw
+  mandatory: false
+
+metrics:
+  enable: true
+  addr: :2112
+  path: /metrics
+
+notification:
+  dingtalk:
+    enable: false
+    # 自定义机器人 Webhook
+    webhook: ""
+    # 启用了签名时填写
+    secret: ""
+
+runner:
+  worker_count: 8
+  queue_size: 128
+  shutdown_grace_period: 15s
+
+lingxing:
+  # 领星 API 请求域名
+  base_url: https://openapi.lingxing.com
+  # access_token 获取路径
+  token_path: /api/auth-server/oauth/access-token
+  timeout: 15s
+  # 令牌回收超时，文档要求默认 2m
+  token_reclaim_timeout: 2m
+  # 本地令牌桶容量，维度: appId + 接口url
+  token_bucket_capacity: 10
+  default_header:
+    X-Source: suxie-collector
+  # 多租户认证配置
+  tenants:
+    xunwo:
+      id: xunwo
+      name: 逊沃
+      app_id: your-app-id
+      app_secret: your-app-secret
+    zhuoya:
+      id: zhuoya
+      name: 卓亚
+      app_id: your-app-id-b
+      app_secret: your-app-secret-b

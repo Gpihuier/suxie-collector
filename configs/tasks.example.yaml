@@ -1,0 +1,136 @@
+version: "1"
+
+# 任务配置支持“按租户隔离 + 按任务扩展”，可快速新增任务。
+tenants:
+  - tenant_id: tenant-a
+    platform: lingxing
+    enabled: true
+    timezone: Asia/Shanghai
+
+    # 租户默认限流（每秒请求数 + 突发）
+    rate_limit:
+      rps: 2
+      burst: 4
+
+    # 租户级变量，可被所有 job 继承
+    variables:
+      - type: list
+        key: shop_id
+        values:
+          - shop_001
+          - shop_002
+
+    jobs:
+      - name: sales-report
+        enabled: true
+        method: GET
+        endpoint: /openapi/sales/report
+        # query/body，默认 query
+        request_in: query
+        parallelism: 2
+
+        schedule:
+          # 当前版本按 interval 模式调度
+          mode: interval
+          # Go duration: 30s/5m/1h
+          every: 2m
+
+        # 可按任务覆盖租户限流
+        rate_limit:
+          rps: 1
+          burst: 2
+
+        pagination:
+          enabled: true
+          start_page: 1
+          # 不同接口分页字段可配置
+          page_param: page
+          page_size_param: limit
+          page_size: 50
+          # Total 字段在 data 内外不一致时，按候选路径自动匹配
+          total_path_candidates:
+            - data.total
+            - Data.Total
+            - total
+            - Total
+
+        # 结果列表路径候选，适配 data/Data 外层差异
+        data_path_candidates:
+          - data.list
+          - data.data
+          - Data.List
+          - Data.Data
+          - list
+          - data
+
+        # 请求参数模板: ${var} 将从 variables 动态替换
+        params:
+          shop_id: "${shop_id}"
+          start_time: "${window_start}"
+          end_time: "${window_end}"
+          granularity: day
+
+        # 任务级变量（会与租户级变量合并）
+        variables:
+          - type: date_window
+            key_start: window_start
+            key_end: window_end
+            # 每轮采集 24h 窗口，结合 redis 游标可从历史时间追到今天
+            window: 24h
+            # 首次启动时起始时间（RFC3339）
+            start_from: "2026-01-01T00:00:00+08:00"
+
+      - name: inventory-list
+        enabled: true
+        method: POST
+        endpoint: /openapi/inventory/list
+        request_in: body
+        parallelism: 1
+        schedule:
+          mode: interval
+          every: 5m
+        pagination:
+          enabled: true
+          start_page: 1
+          page_param: page
+          page_size_param: page_size
+          page_size: 100
+          total_path_candidates:
+            - data.total
+            - total
+        data_path_candidates:
+          - data.rows
+          - rows
+        params:
+          shop_id: "${shop_id}"
+        variables: []
+
+      - name: profit-report-msku
+        # 示例任务，默认关闭；你填好 app_id/app_secret 与店铺参数后可开启
+        enabled: false
+        method: POST
+        endpoint: /bd/profit/report/open/report/msku/list
+        request_in: body
+        parallelism: 1
+        schedule:
+          mode: interval
+          every: 24h
+        pagination:
+          enabled: false
+        params:
+          offset: 0
+          length: 1000
+          mids: [2]
+          sids: [110]
+          monthlyQuery: false
+          startDate: "${window_start}"
+          endDate: "${window_end}"
+        variables:
+          - type: date_window
+            key_start: window_start
+            key_end: window_end
+            # 按天查询格式 Y-m-d
+            format: "2006-01-02"
+            # 每轮 1 天窗口，天然满足“最长31天”约束
+            window: 24h
+            start_from: "2026-01-01T00:00:00+08:00"
