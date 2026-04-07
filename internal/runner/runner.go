@@ -85,6 +85,7 @@ func (r *Runner) Start(ctx context.Context) error {
 					if !ok {
 						return nil
 					}
+					// 执行任务
 					// 每次执行都 clone 任务，避免并发写共享对象。
 					if err := r.engine.Execute(gctx, collector.ExecuteInput{
 						Task:      job.Task.Clone(),
@@ -123,6 +124,7 @@ func (r *Runner) Start(ctx context.Context) error {
 				case <-gctx.Done():
 					return gctx.Err()
 				case execQueue <- compiled:
+					// 开始执行任务说明
 					r.logger.Info("dispatch collect task",
 						"tenant", compiled.Task.TenantID,
 						"platform", compiled.Task.Platform,

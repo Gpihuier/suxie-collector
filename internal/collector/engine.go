@@ -177,8 +177,8 @@ func (e *Engine) Execute(ctx context.Context, in ExecuteInput) error {
 
 	// 如果本次执行包含时间窗口，则更新基础窗口游标。
 	if vars.NextWindowEnd != nil {
-		baseCursorState.LastWindowEnd = vars.NextWindowEnd.UTC().Format(time.RFC3339)
-		baseCursorState.LastSuccessAt = time.Now().UTC()
+		baseCursorState.LastWindowEnd = vars.NextWindowEnd.Local().Format(time.DateTime)
+		baseCursorState.LastSuccessAt = time.Now().Local()
 		// 窗口级游标完成后，将页码游标重置为起始页。
 		baseCursorState.NextPage = in.Task.Pagination.StartPage
 		if err := e.cursors.Set(ctx, baseCursorKey, baseCursorState); err != nil {
@@ -260,13 +260,14 @@ func (e *Engine) collectByParams(
 			TenantID:      in.Task.TenantID,
 			Platform:      in.Task.Platform,
 			JobName:       in.Task.JobName,
+			JobEndpoint:   in.Task.Endpoint,
 			RequestID:     requestID,
 			Page:          page,
 			Total:         total,
 			Records:       records,
 			Raw:           resp,
 			RequestParams: requestParams,
-			CollectedAt:   time.Now().UTC(),
+			CollectedAt:   time.Now().Local(),
 		}
 
 		// 发布消息到 MQ。
@@ -279,9 +280,9 @@ func (e *Engine) collectByParams(
 
 		// 写入分页游标：下一页 + 最近成功时间。
 		pageCursor.NextPage = page + 1
-		pageCursor.LastSuccessAt = time.Now().UTC()
+		pageCursor.LastSuccessAt = time.Now().Local()
 		if vars.NextWindowEnd != nil {
-			pageCursor.LastWindowEnd = vars.NextWindowEnd.UTC().Format(time.RFC3339)
+			pageCursor.LastWindowEnd = vars.NextWindowEnd.Local().Format(time.DateTime)
 		}
 		if err := e.cursors.Set(ctx, pageCursorKey, pageCursor); err != nil {
 			e.logger.Warn("set page cursor failed", "cursor_key", pageCursorKey, "err", err)
@@ -301,9 +302,9 @@ func (e *Engine) collectByParams(
 
 	// 参数组执行完成后，重置 NextPage，确保下轮从起始页开始。
 	pageCursor.NextPage = in.Task.Pagination.StartPage
-	pageCursor.LastSuccessAt = time.Now().UTC()
+	pageCursor.LastSuccessAt = time.Now().Local()
 	if vars.NextWindowEnd != nil {
-		pageCursor.LastWindowEnd = vars.NextWindowEnd.UTC().Format(time.RFC3339)
+		pageCursor.LastWindowEnd = vars.NextWindowEnd.Local().Format(time.DateTime)
 	}
 	if err := e.cursors.Set(ctx, pageCursorKey, pageCursor); err != nil {
 		e.logger.Warn("reset page cursor failed", "cursor_key", pageCursorKey, "err", err)

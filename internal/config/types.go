@@ -100,7 +100,7 @@ type RunnerConfig struct {
 }
 
 // TimeoutDuration 解析领星客户端超时时间，异常时给默认值。
-func (c AppConfig) TimeoutDuration() time.Duration {
+func (c *AppConfig) TimeoutDuration() time.Duration {
 	d, err := time.ParseDuration(c.Lingxing.Timeout)
 	if err != nil || d <= 0 {
 		return 15 * time.Second
@@ -109,7 +109,7 @@ func (c AppConfig) TimeoutDuration() time.Duration {
 }
 
 // ShutdownGraceDuration 解析优雅停机缓冲时间，异常时给默认值。
-func (c AppConfig) ShutdownGraceDuration() time.Duration {
+func (c *AppConfig) ShutdownGraceDuration() time.Duration {
 	d, err := time.ParseDuration(c.Runner.ShutdownGracePeriod)
 	if err != nil || d <= 0 {
 		return 15 * time.Second
@@ -118,28 +118,12 @@ func (c AppConfig) ShutdownGraceDuration() time.Duration {
 }
 
 // LingxingTokenReclaimDuration 解析本地令牌桶超时回收周期。
-func (c AppConfig) LingxingTokenReclaimDuration() time.Duration {
+func (c *AppConfig) LingxingTokenReclaimDuration() time.Duration {
 	d, err := time.ParseDuration(c.Lingxing.TokenReclaimTimeout)
 	if err != nil || d <= 0 {
 		return 2 * time.Minute
 	}
 	return d
-}
-
-// LoadAppConfig 从 yaml 读取应用配置并补齐默认值。
-func LoadAppConfig(path string) (AppConfig, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return AppConfig{}, fmt.Errorf("read app config %s: %w", path, err)
-	}
-
-	var cfg AppConfig
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return AppConfig{}, fmt.Errorf("unmarshal app config: %w", err)
-	}
-
-	cfg.setDefaults()
-	return cfg, nil
 }
 
 // setDefaults 统一维护全局配置默认值，减少运行期 nil/空值判断。
@@ -195,4 +179,20 @@ func (c *AppConfig) setDefaults() {
 	if c.Lingxing.TokenReclaimTimeout == "" {
 		c.Lingxing.TokenReclaimTimeout = "2m"
 	}
+}
+
+// LoadAppConfig 从 yaml 读取应用配置并补齐默认值。
+func LoadAppConfig(path string) (AppConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return AppConfig{}, fmt.Errorf("read app config %s: %w", path, err)
+	}
+
+	var cfg AppConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return AppConfig{}, fmt.Errorf("unmarshal app config: %w", err)
+	}
+
+	cfg.setDefaults()
+	return cfg, nil
 }

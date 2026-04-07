@@ -18,16 +18,14 @@ func main() {
 		configPath string
 		tasksPath  string
 	)
-	flag.StringVar(&configPath, "config", "configs/app.example.yaml", "path to app config yaml")
+	flag.StringVar(&configPath, "config", "configs/app.yaml", "path to app config yaml")
 	flag.StringVar(&tasksPath, "tasks", "", "path to tasks config yaml (optional, override app config)")
 	flag.Parse()
 
 	if err := runWithGracefulReload(configPath, tasksPath); err != nil {
-		fmt.Fprintf(os.Stderr, "collector exit with error: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "collector exit with error: %v\n", err)
 		return
 	}
-
-	fmt.Println("suxie collector start")
 }
 
 // runWithGracefulReload 支持两类信号：

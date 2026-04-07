@@ -3,10 +3,6 @@ package collector
 import "time"
 
 // BaseCollectTask 是采集任务的基础结构体。
-// 设计目标：
-// 1) 用 WithXXX 链式配置，减少构建样板代码。
-// 2) 让 runner 可以把配置层对象统一编译成可执行任务。
-// 3) 为未来动态任务（非 YAML）预留统一入口。
 type BaseCollectTask struct {
 	// TenantID 表示任务所属租户。
 	TenantID string

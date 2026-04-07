@@ -13,14 +13,20 @@ tenants:
       burst: 4
 
     variables:
-      - type: list
-        key: shop_id
-        values:
-          - shop_001
 
     jobs:
+      - name: 查询亚马逊店铺列表
+        enabled: true
+        method: GET
+        endpoint: /erp/sc/data/seller/lists
+        request_in: query
+        parallelism: 1
+        schedule:
+          mode: interval
+          every: 2m
+        pagination:
+          enabled: false
       - name: profit-report-msku
-        # 示例默认关闭，配置好 mids/sids 和鉴权后再开启。
         enabled: false
         method: POST
         endpoint: /bd/profit/report/open/report/msku/list

@@ -66,8 +66,8 @@ lingxing:
     100001:
       id: 100001
       name: 逊沃
-      app_id: ak_KYmwBM7Lkod45
-      app_secret: mu8MeXTrlwM1KhIopxKx8w==
+      app_id: your-app-id
+      app_secret: your-app-secret
     100002:
       id: 100002
       name: 卓亚

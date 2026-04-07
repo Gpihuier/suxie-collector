@@ -8,6 +8,7 @@ type CollectMessage struct {
 	TenantID      string         `json:"tenant_id"`
 	Platform      string         `json:"platform"`
 	JobName       string         `json:"job_name"`
+	JobEndpoint   string         `json:"job_endpoint"`
 	RequestID     string         `json:"request_id"`
 	Page          int            `json:"page"`
 	Total         int            `json:"total"`

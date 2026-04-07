@@ -54,3 +54,6 @@ Desktop.ini
 
 # 依赖目录 (Go Modules 模式下通常不提交 vendor)
 vendor/
+
+configs/app.yaml
+configs/tasks.yaml
